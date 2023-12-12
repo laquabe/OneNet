@@ -1,4 +1,4 @@
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AutoModelForCausalLM
 import transformers
 import torch
 import os
@@ -7,11 +7,15 @@ from tqdm import tqdm
 import random
 from transformers import pipeline
 
-os.environ['CUDA_VISIBLE_DEVICES']='7'
+os.environ['CUDA_VISIBLE_DEVICES']='0,1'
+# os.environ["WORLD_SIZE"] = "1"
 model = "/data/xkliu/LLMs/models/zephyr-7b-beta"
 dataset_path = '/data/xkliu/EL_datasets/'
 category_list = ['General reference','Culture and the arts','Geography and places','Health and fitness', 'History and events', 'Human activities', 'Mathematics and logic', 'Natural and physical sciences', 'People and self', 'Philosophy and thinking', 'Religion and belief systems', 'Society and social sciences', 'Technology and applied sciences']
 
+# tokenizer = AutoTokenizer.from_pretrained(model)
+# model = AutoModelForCausalLM.from_pretrained(model)
+# model = model.to(device)
 pipe = pipeline("text-generation", model=model, torch_dtype=torch.bfloat16, device_map="auto")
 
 def read_json(file_name):
@@ -94,20 +98,18 @@ def prompt_formula(src_dict, cot_dict, cot_global_list):
 
     # content += """You need to determine which candidate entity is more likely to be the mention. Please refer to the above tips and examples, give your reasons, and finally answer serial number of the entity and the name of the entity. If all candidate entities are not appropriate, you can answer '-1.None'."""
     content += """You need to determine which candidate entity is more likely to be the mention. Please refer to the above example, give your reasons, and finally answer serial number of the entity and the name of the entity. 
-    If all candidate entities are not appropriate, you can answer '-1.None'."""
+    If all candidate entities are not appropriate, you can answer '-1.None'.You should answer in the following json format {"Serial number":, "Name of the entity":}"""
 
     return system_content, content
 
-dataset_name = 'ace2004_test_noprompt_sum13B_13B'
+dataset_name = 'aida_test_noprompt_sum13B_13B'
 dataset = read_json(dataset_path + 'datasets_recall/listwise_input/{}_with_c.jsonl'.format(dataset_name))
-output_f = open(dataset_path + 'result/zephry/{}_noprompt.jsonl'.format(dataset_name), 'w')
-instruction_dict = read_prompt('/data/xkliu/EL_code/MyEL/utils/prompt.jsonl')
+output_f = open(dataset_path + 'result/zephyr/{}_noprompt_format.jsonl'.format(dataset_name), 'w')
+instruction_dict = read_prompt('/data/xkliu/EL_code/LLM4EL/prompt/prompt.jsonl')
 cot_dict, cot_global_list = read_cot('/data/xkliu/EL_datasets/COT_sample/final/aida_train_merge_listwise_with_c.jsonl')
 
 for src_dict in tqdm(dataset):
     system_content ,content = prompt_formula(src_dict, cot_dict,  cot_global_list)
-    # content = ('<s>[INST]' + content + '[/INST]')
-    # print(content)
     messages = [
     {
         "role": "system",
@@ -115,15 +117,17 @@ for src_dict in tqdm(dataset):
     },
     {"role": "user", "content": content},
     ]
-    print(messages)
     try:
         prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        outputs = pipe(prompt, max_new_tokens=256, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
-        src_dict['llama_predict'] = outputs[0]["generated_text"]
-        print(outputs[0]["generated_text"])
+        outputs = pipe(prompt, max_new_tokens=2048, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
+        gen_text = outputs[0]["generated_text"]
+        gen_start_pos = gen_text.find('<|assistant|>')
+        gen_text = gen_text[gen_start_pos:]
+        # print(gen_text)
+        src_dict['llama_predict'] = gen_text
         output_f.write(json.dumps(src_dict, ensure_ascii=False) + '\n')
     except:
         src_dict['llama_predict'] = ''
         output_f.write(json.dumps(src_dict, ensure_ascii=False) + '\n')
-        
+    
 
