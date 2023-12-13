@@ -7,7 +7,7 @@ from tqdm import tqdm
 import random
 from transformers import pipeline
 
-os.environ['CUDA_VISIBLE_DEVICES']='0,1'
+# os.environ['CUDA_VISIBLE_DEVICES']='0,1'
 # os.environ["WORLD_SIZE"] = "1"
 model = "/data/xkliu/LLMs/models/zephyr-7b-beta"
 dataset_path = '/data/xkliu/EL_datasets/'
