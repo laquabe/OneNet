@@ -100,9 +100,9 @@ def prompt_formula_prior(src_dict):
 
 def prompt_formula(src_dict, cot_dict, cot_global_list):
     # content = "You're an entity disambiguator. I'll give you some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
-    # content = "You're an entity disambiguator. I'll give you the description of entity disambiguation and some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
-    system_content = "You're an entity disambiguator."
-    # content += instruction_dict[0]['prompt']
+    system_content = "You're an entity disambiguator. I'll give you the description of entity disambiguation and some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
+    # system_content = "You're an entity disambiguator."
+    system_content += instruction_dict[0]['prompt']
     # content += '\n\n'
     cot_case_list = cot_dict.get(src_dict['llm_category'], [])
     if len(cot_case_list) > 0:
@@ -136,18 +136,18 @@ def prompt_formula(src_dict, cot_dict, cot_global_list):
 
 dataset_name = 'msnbc_test_prompt0_sum13B_13B'
 '''listwise'''
-# dataset = read_json(dataset_path + 'datasets_recall/listwise_input/{}_with_c.jsonl'.format(dataset_name))
+dataset = read_json(dataset_path + 'datasets_recall/listwise_input/{}_with_c.jsonl'.format(dataset_name))
 '''judge'''
-dataset = read_json(dataset_path + 'result/zephyr/{}_noprompt_format.jsonl'.format(dataset_name))
-output_f = open(dataset_path + 'result/zephyr/judge/{}_noprompt_format.jsonl'.format(dataset_name), 'w')
-output_key = 'llm_judge'
-max_new_token = 1024
+# dataset = read_json(dataset_path + 'result/zephyr/{}_noprompt_format.jsonl'.format(dataset_name))
+output_f = open(dataset_path + 'result/zephyr/{}_prompt0_format.jsonl'.format(dataset_name), 'w')
+output_key = 'llama_predict'
+max_new_token = 2048
 instruction_dict = read_prompt('/data/xkliu/EL_code/LLM4EL/prompt/prompt.jsonl')
 cot_dict, cot_global_list = read_cot('/data/xkliu/EL_datasets/COT_sample/final/aida_train_merge_listwise_with_c.jsonl')
 
 for src_dict in tqdm(dataset):
-    # system_content ,content = prompt_formula(src_dict, cot_dict,  cot_global_list)
-    system_content ,content = prompt_formula_judge(src_dict)
+    system_content ,content = prompt_formula(src_dict, cot_dict,  cot_global_list)
+    # system_content ,content = prompt_formula_judge(src_dict)
     messages = [
     {
         "role": "system",
@@ -155,19 +155,19 @@ for src_dict in tqdm(dataset):
     },
     {"role": "user", "content": content},
     ]
-    # print(messages)
-    try:
-        prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        outputs = pipe(prompt, max_new_tokens=max_new_token, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
-        gen_text = outputs[0]["generated_text"]
-        gen_start_pos = gen_text.find('<|assistant|>')
-        gen_text = gen_text[gen_start_pos:]
-        # print(gen_text)
-        src_dict[output_key] = gen_text
-        # exit()
-        output_f.write(json.dumps(src_dict, ensure_ascii=False) + '\n')
-    except:
-        src_dict[output_key] = ''
-        output_f.write(json.dumps(src_dict, ensure_ascii=False) + '\n')
+    print(messages)
+    # try:
+    prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    outputs = pipe(prompt, max_new_tokens=max_new_token, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
+    gen_text = outputs[0]["generated_text"]
+    gen_start_pos = gen_text.find('<|assistant|>')
+    gen_text = gen_text[gen_start_pos:]
+    print(gen_text)
+    src_dict[output_key] = gen_text
+    exit()
+    output_f.write(json.dumps(src_dict, ensure_ascii=False) + '\n')
+    # except:
+    #     src_dict[output_key] = ''
+    #     output_f.write(json.dumps(src_dict, ensure_ascii=False) + '\n')
     
 
