@@ -39,16 +39,17 @@ def result_decode(llm_pred:str, map_dict):
         index_dict = {}
         for name in map_dict.keys():
             if name in llm_pred:
-                pos = llm_pred.rfind(name) + len(name)
+                pos = llm_pred.find(name) - len(name)
                 index_dict[name] = pos
     
         if len(index_dict) > 0:
-            pred_entity, _ = sorted(index_dict.items(), key = lambda kv:(kv[1], len(kv[0]), kv[0]), reverse=True)[0]
+            pred_entity, _ = sorted(index_dict.items(), key = lambda kv:(kv[1], len(kv[0]), kv[0]), reverse=False)[0]
         else:
             pred_entity = 'none'
     
     return pred_entity
 
+# bad_f = open('/data/xkliu/EL_datasets/result/zephyr/badcase/ace2004_test_noprompt_sum13B_13B_noprompt.jsonl', 'w')
 def file_f1(file_name):
     all_num = 0
     hit_num = 0
@@ -62,7 +63,7 @@ def file_f1(file_name):
                 error_num += 1
                 continue
 
-            map_dict = {'none':-1}
+            map_dict = {'none':4096}
             for cand in line['candidates']:
                 map_dict[cand['name'].lower()] = int(cand['wiki_id'])
 
@@ -71,11 +72,13 @@ def file_f1(file_name):
 
             if pred_num == line['ans_id']:
                 hit_num += 1
-
+            # else:
+            #     bad_f.write(json.dumps(line,ensure_ascii=False) + '\n')
+            
     print(all_num, hit_num, hit_num / all_num ,error_num)
 
 if __name__ == "__main__":
-    datasets_path = '/data/xkliu/EL_datasets/result/'
-    dateset_name = 'wiki_test_prompt0'
-    recall_file = '{}_sum13B_13B_noprompt.jsonl'.format(dateset_name)
+    datasets_path = '/data/xkliu/EL_datasets/result/zephyr/'
+    dateset_name = 'ace2004_test_noprompt'
+    recall_file = '{}_sum13B_13B_prompt0_5top5.jsonl'.format(dateset_name)
     file_f1(datasets_path + recall_file)
