@@ -54,7 +54,8 @@ def list_prompt_formula(src_dict:dict):
 
 def read_cot(cot_file_name):
     cot_dict = {}
-    cot_global_list = []
+    cot_index_dict = {}
+    i = 0
     with open(cot_file_name) as input_f:
         for line in tqdm(input_f):
             line = json.loads(line.strip())
@@ -63,8 +64,10 @@ def read_cot(cot_file_name):
             cot_list = cot_dict.get(line['llm_category'], [])
             cot_list.append(prompt)
             cot_dict[line['llm_category']] = cot_list
-            cot_global_list.append(prompt)
-    return cot_dict, cot_list
+            
+            cot_index_dict[i] = prompt
+            i += 1
+    return cot_dict, cot_index_dict
 
 def prompt_formula_judge(src_dict):
     system_content = "You're a fact-checker."
@@ -98,17 +101,34 @@ def prompt_formula_prior(src_dict):
 
     return system_content, content
 
-def prompt_formula(src_dict, cot_dict, cot_global_list):
-    # content = "You're an entity disambiguator. I'll give you some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
+def read_cot_cand(file_name):
+    cand_list = []
+    with open(file_name) as input_f:
+        for line in input_f:
+            line = json.loads(line.strip())
+            cand_list.append(line['cand_index'])
+    
+    return cand_list
+
+def prompt_formula(src_dict, cot_dict, cot_index_dict, cot_cand, topk):
+    # system_content = "You're an entity disambiguator. I'll give you some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
     system_content = "You're an entity disambiguator. I'll give you the description of entity disambiguation and some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
     # system_content = "You're an entity disambiguator."
     system_content += instruction_dict[0]['prompt']
     # content += '\n\n'
-    cot_case_list = cot_dict.get(src_dict['llm_category'], [])
-    if len(cot_case_list) > 0:
-        cot_case = random.sample(cot_case_list, 1)[0]
-    else:
-        cot_case = random.sample(cot_global_list, 1)[0]
+
+    '''only category'''
+    # cot_case_list = cot_dict.get(src_dict['llm_category'], [])
+    # if len(cot_case_list) > 0:
+    #     cot_case = random.sample(cot_case_list, 1)[0]
+    # else:
+    #     cot_case = random.sample(cot_global_list, 1)[0]
+    '''category and sentence sim'''
+    cot_index_list = cot_cand[:topk]
+    cot_index = random.sample(cot_index_list, 1)[0]
+    # print(cot_index)
+    cot_case = cot_index_dict[cot_index]
+    
     content = 'The following example will help you understand the task:\n\n'
     content += cot_case
 
@@ -129,24 +149,28 @@ def prompt_formula(src_dict, cot_dict, cot_global_list):
     content += '\n'
 
     # content += """You need to determine which candidate entity is more likely to be the mention. Please refer to the above tips and examples, give your reasons, and finally answer serial number of the entity and the name of the entity. If all candidate entities are not appropriate, you can answer '-1.None'."""
-    content += """You need to determine which candidate entity is more likely to be the mention. Please refer to the above example, give your reasons, and finally answer serial number of the entity and the name of the entity. 
-    If all candidate entities are not appropriate, you can answer '-1.None'.You should answer in the following json format {"Serial number":, "Name of the entity":}"""
+    # content += """You need to determine which candidate entity is more likely to be the mention. Please refer to the above example, give your reasons, and finally answer serial number of the entity and the name of the entity. 
+    # If all candidate entities are not appropriate, you can answer '-1.None'.You should answer in the following json format {"Serial number":, "Name of the entity":}"""
+    content += """You need to determine which candidate entity is more likely to be the mention. Please refer to the above example, give your reasons, and finally answer serial number of the entity and the name of the entity. If all candidate entities are not appropriate, you can answer '-1.None'."""
 
     return system_content, content
 
-dataset_name = 'msnbc_test_prompt0_sum13B_13B'
+dataset_name = 'wiki_test_prompt0'
 '''listwise'''
-dataset = read_json(dataset_path + 'datasets_recall/listwise_input/{}_with_c.jsonl'.format(dataset_name))
+dataset = read_json(dataset_path + 'datasets_recall/listwise_input/{}_sum13B_13B_with_c.jsonl'.format(dataset_name))
 '''judge'''
 # dataset = read_json(dataset_path + 'result/zephyr/{}_noprompt_format.jsonl'.format(dataset_name))
-output_f = open(dataset_path + 'result/zephyr/{}_prompt0_format.jsonl'.format(dataset_name), 'w')
+
+output_f = open(dataset_path + 'result/zephyr/{}_sum13B_13B_prompt0_5top1.jsonl'.format(dataset_name), 'w')
 output_key = 'llama_predict'
 max_new_token = 2048
 instruction_dict = read_prompt('/data/xkliu/EL_code/LLM4EL/prompt/prompt.jsonl')
-cot_dict, cot_global_list = read_cot('/data/xkliu/EL_datasets/COT_sample/final/aida_train_merge_listwise_with_c.jsonl')
+cot_dict, cot_index_dict = read_cot('/data/xkliu/EL_datasets/COT_sample/final/aida_train_merge_listwise_repeated.jsonl')
+dataset_cand_list = read_cot_cand('/data/xkliu/EL_datasets/embedding/{}_cot.jsonl'.format(dataset_name))
+topk = 1
 
-for src_dict in tqdm(dataset):
-    system_content ,content = prompt_formula(src_dict, cot_dict,  cot_global_list)
+for src_dict, cot_cand in tqdm(zip(dataset, dataset_cand_list)):
+    system_content ,content = prompt_formula(src_dict, cot_dict, cot_index_dict, cot_cand, topk)
     # system_content ,content = prompt_formula_judge(src_dict)
     messages = [
     {
@@ -155,19 +179,20 @@ for src_dict in tqdm(dataset):
     },
     {"role": "user", "content": content},
     ]
-    print(messages)
-    # try:
-    prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    outputs = pipe(prompt, max_new_tokens=max_new_token, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
-    gen_text = outputs[0]["generated_text"]
-    gen_start_pos = gen_text.find('<|assistant|>')
-    gen_text = gen_text[gen_start_pos:]
-    print(gen_text)
-    src_dict[output_key] = gen_text
-    exit()
-    output_f.write(json.dumps(src_dict, ensure_ascii=False) + '\n')
-    # except:
-    #     src_dict[output_key] = ''
-    #     output_f.write(json.dumps(src_dict, ensure_ascii=False) + '\n')
+    # print(messages)
+    # exit()
+    try:
+        prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        outputs = pipe(prompt, max_new_tokens=max_new_token, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
+        gen_text = outputs[0]["generated_text"]
+        gen_start_pos = gen_text.find('<|assistant|>')
+        gen_text = gen_text[gen_start_pos:]
+        # print(gen_text)
+        src_dict[output_key] = gen_text
+        # exit()
+        output_f.write(json.dumps(src_dict, ensure_ascii=False) + '\n')
+    except:
+        src_dict[output_key] = ''
+        output_f.write(json.dumps(src_dict, ensure_ascii=False) + '\n')
     
 
