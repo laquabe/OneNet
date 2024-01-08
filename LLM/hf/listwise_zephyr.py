@@ -78,13 +78,13 @@ def prompt_formula_judge(src_dict):
 
     content += "Now please double-check the reasoning process about entity disambiguation for mention '{}', ".format(src_dict['mention'])
     content += 'let’s analyze its correctness, and finally answer "yes" or "no".'
-    content += 'You should answer in the following json format {"Double-chekc result":}'
+    # content += 'You should answer in the following json format {"Double-check result":}'
 
     return system_content, content
 
 def prompt_formula_prior(src_dict):
     system_content = "You're an entity disambiguator."
-    content += "I'll provide you a mention and its candidates below.\n\n"
+    content = "I'll provide you a mention and its candidates below.\n\n"
     content += 'mention:{}\n'.format(src_dict['mention'])
 
     candidates = random.sample(src_dict['candidates'], len(src_dict['candidates']))
@@ -95,9 +95,9 @@ def prompt_formula_prior(src_dict):
         i += 1
     content += '\n'
 
-    content += "Based on your knowledge, please determine which is the most likely entity when people refer to mention {}, ".format(src_dict['mention'])
-    content += "and end with the name of the entity. "
-    content += 'You should answer in the following json format {"Name of the entity":}'
+    content += 'Based on your knowledge, please determine which is the most likely entity when people refer to mention "{}", '.format(src_dict['mention'])
+    content += "and finally answer the name of the entity. "
+    # content += 'You should answer in the following json format {"Name of the entity":}'
 
     return system_content, content
 
@@ -114,7 +114,7 @@ def prompt_formula(src_dict, cot_dict, cot_index_dict, cot_cand, topk):
     # system_content = "You're an entity disambiguator. I'll give you some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
     system_content = "You're an entity disambiguator. I'll give you the description of entity disambiguation and some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
     # system_content = "You're an entity disambiguator."
-    system_content += instruction_dict[0]['prompt']
+    system_content += instruction_dict[1]['prompt']
     # content += '\n\n'
 
     '''only category'''
@@ -156,22 +156,23 @@ def prompt_formula(src_dict, cot_dict, cot_index_dict, cot_cand, topk):
     return system_content, content
 
 dataset_name = 'wiki_test_prompt0'
-'''listwise'''
-dataset = read_json(dataset_path + 'datasets_recall/listwise_input/{}_sum13B_13B_with_c.jsonl'.format(dataset_name))
+'''listwise or prior'''
+# dataset = read_json(dataset_path + 'datasets_recall/listwise_input/{}_sum13B_13B_with_c.jsonl'.format(dataset_name))
 '''judge'''
-# dataset = read_json(dataset_path + 'result/zephyr/{}_noprompt_format.jsonl'.format(dataset_name))
+dataset = read_json(dataset_path + 'result/zephyr/{}_sum13B_13B_prompt1_5top1.jsonl'.format(dataset_name))
 
-output_f = open(dataset_path + 'result/zephyr/{}_sum13B_13B_prompt0_5top1.jsonl'.format(dataset_name), 'w')
-output_key = 'llama_predict'
-max_new_token = 2048
+output_f = open(dataset_path + 'result/zephyr/judge/{}_sum13B_13B_prompt1_5top1.jsonl'.format(dataset_name), 'w')
+output_key = 'llm_judge'
+max_new_token = 1024
 instruction_dict = read_prompt('/data/xkliu/EL_code/LLM4EL/prompt/prompt.jsonl')
 cot_dict, cot_index_dict = read_cot('/data/xkliu/EL_datasets/COT_sample/final/aida_train_merge_listwise_repeated.jsonl')
 dataset_cand_list = read_cot_cand('/data/xkliu/EL_datasets/embedding/{}_cot.jsonl'.format(dataset_name))
 topk = 1
 
 for src_dict, cot_cand in tqdm(zip(dataset, dataset_cand_list)):
-    system_content ,content = prompt_formula(src_dict, cot_dict, cot_index_dict, cot_cand, topk)
-    # system_content ,content = prompt_formula_judge(src_dict)
+    # system_content ,content = prompt_formula(src_dict, cot_dict, cot_index_dict, cot_cand, topk)  # listwise
+    system_content ,content = prompt_formula_judge(src_dict)                                     # judge
+    # system_content, content = prompt_formula_prior(src_dict)                                        # prior
     messages = [
     {
         "role": "system",
