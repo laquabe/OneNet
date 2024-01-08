@@ -50,7 +50,7 @@ def result_decode(llm_pred:str, map_dict):
     return pred_entity
 
 # bad_f = open('/data/xkliu/EL_datasets/result/zephyr/badcase/ace2004_test_noprompt_sum13B_13B_noprompt.jsonl', 'w')
-def file_f1(file_name):
+def file_f1(file_name, test_field):
     all_num = 0
     hit_num = 0
     error_num = 0
@@ -59,7 +59,7 @@ def file_f1(file_name):
             all_num += 1
             line = json.loads(line)
 
-            if len(line['llama_predict']) == 0:
+            if len(line[test_field]) == 0:
                 error_num += 1
                 continue
 
@@ -67,7 +67,7 @@ def file_f1(file_name):
             for cand in line['candidates']:
                 map_dict[cand['name'].lower()] = int(cand['wiki_id'])
 
-            pred_entity = result_decode(line['llama_predict'], map_dict)
+            pred_entity = result_decode(line[test_field], map_dict)
             pred_num = map_dict[pred_entity]
 
             if pred_num == line['ans_id']:
@@ -78,7 +78,8 @@ def file_f1(file_name):
     print(all_num, hit_num, hit_num / all_num ,error_num)
 
 if __name__ == "__main__":
-    datasets_path = '/data/xkliu/EL_datasets/result/zephyr/'
+    datasets_path = '/data/xkliu/EL_datasets/result/zephyr/prior/'
     dateset_name = 'ace2004_test_noprompt'
-    recall_file = '{}_sum13B_13B_prompt0_5top5.jsonl'.format(dateset_name)
-    file_f1(datasets_path + recall_file)
+    recall_file = '{}_sum13B_13B.jsonl'.format(dateset_name)
+    test_field = 'llm_prior'
+    file_f1(datasets_path + recall_file, test_field)
