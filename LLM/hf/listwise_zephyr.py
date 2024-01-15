@@ -16,7 +16,7 @@ category_list = ['General reference','Culture and the arts','Geography and place
 # tokenizer = AutoTokenizer.from_pretrained(model)
 # model = AutoModelForCausalLM.from_pretrained(model)
 # model = model.to(device)
-pipe = pipeline("text-generation", model=model, torch_dtype=torch.bfloat16, device_map="auto")
+# pipe = pipeline("text-generation", model=model, torch_dtype=torch.bfloat16, device_map="auto")
 
 def read_json(file_name):
     data_list = []
@@ -69,18 +69,41 @@ def read_cot(cot_file_name):
             i += 1
     return cot_dict, cot_index_dict
 
-def prompt_formula_judge(src_dict):
-    system_content = "You're a fact-checker."
-    content = "Here is my friend's reasoning on entity disambiguation for mention '{}'\n".format(src_dict['mention'])
+def prompt_formula_judge(src_dict, judge_key):
+    system_content = "You're an entity disambiguator."
 
-    content += src_dict['llama_predict'].replace('<|assistant|>','')
-    content += '\n\n'
+    content = "I'll give you a mention, a context, and a list of candidates entities, the mention will be highlighted with '###' in context.\n\n"
+    content += 'mention:{}\n'.format(src_dict['mention'])
 
-    content += "Now please double-check the reasoning process about entity disambiguation for mention '{}', ".format(src_dict['mention'])
-    content += 'let’s analyze its correctness, and finally answer "yes" or "no".'
+    context = src_dict['left_context'] + ' ###' + src_dict['mention'] + '### ' + src_dict['right_context']
+    context = context.strip()
+    context = ' '.join(context.split())
+    content += 'context:{}\n'.format(context)
+
+    candidates = random.sample(src_dict['candidates'], len(src_dict['candidates']))
+    i = 1
+    for cand in candidates:
+        cand_entity = '{}.{}'.format(cand['name'], cand['summary'])
+        content += 'entity {}:{}\n'.format(i, cand_entity)
+        i += 1
+    content += '\n'
+    content += """You need to determine which candidate entity is more likely to be the mention. Please refer to the above example, give your reasons, and finally answer serial number of the entity and the name of the entity. If all candidate entities are not appropriate, you can answer '-1.None'."""
+
+    check_content = "Now please double-check the reasoning process above. "
+    check_content += 'let’s think step by step, analyze its correctness, and finally answer "yes" or "no".'
     # content += 'You should answer in the following json format {"Double-check result":}'
+    
+    messages = [
+    {
+        "role": "system",
+        "content": system_content,
+    },
+    {"role": "user", "content": content},
+    {"role": "assistant", "content": src_dict[judge_key].strip('<|assistant|>\n')},
+    {"role": "user", "content": check_content}
+    ]
 
-    return system_content, content
+    return messages
 
 def prompt_formula_prior(src_dict):
     system_content = "You're an entity disambiguator."
@@ -96,10 +119,18 @@ def prompt_formula_prior(src_dict):
     content += '\n'
 
     content += 'Based on your knowledge, please determine which is the most likely entity when people refer to mention "{}", '.format(src_dict['mention'])
-    content += "and finally answer the name of the entity. "
+    content += "and finally answer the name of the entity."
     # content += 'You should answer in the following json format {"Name of the entity":}'
 
-    return system_content, content
+    messages = [
+    {
+        "role": "system",
+        "content": system_content,
+    },
+    {"role": "user", "content": content},
+    ]
+
+    return messages
 
 def read_cot_cand(file_name):
     cand_list = []
@@ -111,10 +142,10 @@ def read_cot_cand(file_name):
     return cand_list
 
 def prompt_formula(src_dict, cot_dict, cot_index_dict, cot_cand, topk):
-    # system_content = "You're an entity disambiguator. I'll give you some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
-    system_content = "You're an entity disambiguator. I'll give you the description of entity disambiguation and some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
+    system_content = "You're an entity disambiguator. I'll give you some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
+    # system_content = "You're an entity disambiguator. I'll give you the description of entity disambiguation and some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
     # system_content = "You're an entity disambiguator."
-    system_content += instruction_dict[1]['prompt']
+    system_content += instruction_dict[4]['prompt']
     # content += '\n\n'
 
     '''only category'''
@@ -153,7 +184,15 @@ def prompt_formula(src_dict, cot_dict, cot_index_dict, cot_cand, topk):
     # If all candidate entities are not appropriate, you can answer '-1.None'.You should answer in the following json format {"Serial number":, "Name of the entity":}"""
     content += """You need to determine which candidate entity is more likely to be the mention. Please refer to the above example, give your reasons, and finally answer serial number of the entity and the name of the entity. If all candidate entities are not appropriate, you can answer '-1.None'."""
 
-    return system_content, content
+    messages = [
+    {
+        "role": "system",
+        "content": system_content,
+    },
+    {"role": "user", "content": content},
+    ]
+
+    return messages
 
 dataset_name = 'wiki_test_prompt0'
 '''listwise or prior'''
@@ -170,18 +209,12 @@ dataset_cand_list = read_cot_cand('/data/xkliu/EL_datasets/embedding/{}_cot.json
 topk = 1
 
 for src_dict, cot_cand in tqdm(zip(dataset, dataset_cand_list)):
-    # system_content ,content = prompt_formula(src_dict, cot_dict, cot_index_dict, cot_cand, topk)  # listwise
-    system_content ,content = prompt_formula_judge(src_dict)                                     # judge
-    # system_content, content = prompt_formula_prior(src_dict)                                        # prior
-    messages = [
-    {
-        "role": "system",
-        "content": system_content,
-    },
-    {"role": "user", "content": content},
-    ]
-    # print(messages)
-    # exit()
+    # messages = prompt_formula(src_dict, cot_dict, cot_index_dict, cot_cand, topk)  # listwise
+    messages = prompt_formula_judge(src_dict, 'llama_predict')                                     # judge
+    # messages = prompt_formula_prior(src_dict)                                        # prior
+    
+    print(json.dumps(messages))
+    exit()
     try:
         prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         outputs = pipe(prompt, max_new_tokens=max_new_token, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
