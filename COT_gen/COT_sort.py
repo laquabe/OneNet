@@ -2,10 +2,10 @@ import numpy as np
 import json
 from tqdm import tqdm
 
-src_file_name = 'aquaint_test_noprompt'
+src_file_name = 'wiki_test_prompt0'
 cot_embed_arr = np.load('/data/xkliu/EL_datasets/embedding/aida_train_merge.npy')
 src_embed_list = np.load('/data/xkliu/EL_datasets/embedding/{}.npy'.format(src_file_name))
-map_file = open('/data/xkliu/EL_datasets/embedding/{}_cot.jsonl'.format(src_file_name), 'w')
+map_file = open('/data/xkliu/EL_datasets/embedding/{}_cot_simonly.jsonl'.format(src_file_name), 'w')
 cot_file = open('/data/xkliu/EL_datasets/COT_sample/final/aida_train_merge_listwise_repeated.jsonl')
 src_file = open('/data/xkliu/EL_datasets/result/{}_sum13B_13B_noprompt.jsonl'.format(src_file_name))
 
@@ -35,7 +35,7 @@ for k, v in category_dict.items():
 
 src_embed_list = src_embed_list.tolist()
 src_file_list = src_file.readlines()
-alpha = 0.5
+alpha = 1.0
 
 def normalization(data):
     _range = np.max(data) - np.min(data)

@@ -95,7 +95,7 @@ def vote_result_2(res_dict:dict):
         res_rank[i] = num + 1
     return sorted(res_rank.items(), key=lambda item: item[1], reverse=True)[0][0]
 
-def file_f1_vote(file_name, test_field):
+def file_f1_vote(file_name, test_field, vote_type=1):
     all_num = 0
     hit_num = 0
     error_num = 0
@@ -116,8 +116,10 @@ def file_f1_vote(file_name, test_field):
                 pred_entity = result_decode(line[test_key], map_dict)
                 pred_num = map_dict[pred_entity]
                 test_dict[test_key] = pred_num
-
-            pred_num = vote_result_1(test_dict)
+            if vote_type == 1:
+                pred_num = vote_result_1(test_dict)
+            else:
+                pred_num = vote_result_1(test_dict)
             if pred_num == line['ans_id']:
                 hit_num += 1
             
@@ -128,8 +130,8 @@ def file_f1_judge(file_name, test_field):
 
 if __name__ == "__main__":
     datasets_path = '/data/xkliu/EL_datasets/result/zephyr/merge/'
-    dateset_name = 'wiki_test_prompt0'
+    dateset_name = 'cweb_test_prompt0'
     recall_file = '{}_sum13B_13B.jsonl'.format(dateset_name)
     test_field = ['llm_prior',"llm_predict_prompt0", "llm_predict_prompt1"]
     # file_f1_merge(datasets_path + recall_file, test_field)
-    file_f1_vote(datasets_path + recall_file, test_field)
+    file_f1_vote(datasets_path + recall_file, test_field, 2)

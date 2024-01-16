@@ -80,6 +80,6 @@ def file_f1(file_name, test_field):
 if __name__ == "__main__":
     datasets_path = '/data/xkliu/EL_datasets/result/zephyr/'
     dateset_name = 'wiki_test_prompt0'
-    recall_file = '{}_sum13B_13B_prompt6_5top1.jsonl'.format(dateset_name)
+    recall_file = '{}_sum13B_13B_prompt4_5top1.jsonl'.format(dateset_name)
     test_field = 'llama_predict'
     file_f1(datasets_path + recall_file, test_field)
