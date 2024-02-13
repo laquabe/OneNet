@@ -5,7 +5,7 @@ from tqdm import tqdm
 import jsonlines
 import pandas as pd
 import json
-''' 筛选被mention召回的entity'''
+''' recall entity having mention'''
 ''' data config'''
 dataset_path = '/data/xkliu/EL_datasets/'
 num_candidates = 40

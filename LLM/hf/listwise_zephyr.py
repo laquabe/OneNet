@@ -207,9 +207,9 @@ def read_cot_cand(file_name):
 
 def prompt_formula(src_dict, cot_dict, cot_index_dict, cot_cand, topk, prompt_id):
     # system_content = "You're an entity disambiguator. I'll give you some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
-    # system_content = "You're an entity disambiguator. I'll give you the description of entity disambiguation and some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
+    system_content = "You're an entity disambiguator. I'll give you the description of entity disambiguation and some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
     # system_content = "You're an entity disambiguator."
-    system_content = ''
+    # system_content = ''
     system_content += instruction_dict[prompt_id]['prompt']
     # content += '\n\n'
 
@@ -227,8 +227,7 @@ def prompt_formula(src_dict, cot_dict, cot_index_dict, cot_cand, topk, prompt_id
     '''random'''
     # cot_case = random.sample(list(cot_index_dict.values()), 1)[0]
     
-    # content = 'The following example will help you understand the task:\n\n'
-    content = 'Example:\n\n'
+    content = 'The following example will help you understand the task:\n\n'
     content += cot_case
 
     # content += "Now, I'll give you a mention, a context, and a list of candidates entities, the mention will be highlighted with '###' in context.\n\n"

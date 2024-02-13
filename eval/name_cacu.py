@@ -4,7 +4,7 @@ from tqdm import tqdm
 import jsonlines
 import pandas as pd
 import json
-# 统计数据集中，是否存在同一段落，menion完全一样但是所指实体不一样的
+# mention same but diff entities
 ''' data config'''
 dataset_path = '/data/xkliu/EL_datasets/'
 num_candidates = 40
@@ -21,7 +21,7 @@ def name_count(filename):
     diff_num = 0
     repeat_dict = {}
     with open(filename, 'r') as input_f:
-        # 存在context覆盖的问题
+        # context overlap
         for line in tqdm(input_f):
             line = json.loads(line.strip())
             context = line['left_context'].split(',')[-1] + ' ' + line['mention'] + ' ' + line['right_context'].split(',')[0]

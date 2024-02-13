@@ -79,7 +79,6 @@ def file_f1_merge(file_name, test_field):
     print(all_num, hit_num, hit_num / all_num ,error_num)
 
 def vote_result_1(res_dict:dict):
-    '''context-aware 一致的时候，听上下文的，否则听prior'''
     if "llm_predict_prompt0" not in res_dict.keys() or "llm_predict_prompt1" not in res_dict.keys():
         return res_dict['llm_prior']
     if res_dict["llm_predict_prompt0"] == res_dict["llm_predict_prompt1"]:
