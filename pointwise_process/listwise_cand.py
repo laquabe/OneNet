@@ -1,12 +1,13 @@
 import json
 from tqdm import tqdm
 
-dataset_name = 'wiki'
+dataset_name = 'msnbc'
 filter_method = 'prompt0_sum13B_13B'
 negative_list = ['"no"', "'no'", 'not related','cannot establish a relationship']
-with open('cand_filter/{}_test_{}.jsonl'.format(dataset_name, filter_method)) as input_f, \
-    open('listwise_input/no_cand/{}_test_13B.jsonl'.format(dataset_name)) as no_cand_f, \
-    open('listwise_input/all_cand/{}_test_{}.jsonl'.format(dataset_name, filter_method), 'w') as output_f:
+dataset_path = '/data/xkliu/EL_datasets/datasets_recall/'
+with open(dataset_path + 'cand_filter/{}_test_{}.jsonl'.format(dataset_name, filter_method)) as input_f, \
+    open(dataset_path + 'listwise_input/no_cand/{}_test_13B.jsonl'.format(dataset_name)) as no_cand_f, \
+    open(dataset_path + 'listwise_input/meta/{}_test_{}.jsonl'.format(dataset_name, filter_method), 'w') as output_f:
     
     id_cand_dict = {}
     id_set = set()
@@ -21,9 +22,12 @@ with open('cand_filter/{}_test_{}.jsonl'.format(dataset_name, filter_method)) as
                 "output":line["output"],
                 "ans_id":line["ans_id"],
                 "id":line["id"],
-                "candidates":[]
+                "candidates":[],
+                "meta_cands":[]
             }
         neg_flag = False
+        meta_cands = id_cand_dict[line['id']]['meta_cands']
+        meta_cands.append(line['cand_name'])
         for neg_words in negative_list:
             if neg_words in line['llm_answer']:
                 neg_flag = True

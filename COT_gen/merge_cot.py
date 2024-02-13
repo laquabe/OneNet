@@ -144,32 +144,22 @@ def merge_decode(llm_pred):
         if index < neg_index:
             neg_index = index 
 
-    if pos_index < neg_index:
+    if pos_index <= neg_index:
         return 'context'
     else:
         return 'prior'
     
-def file_f1_merge(file_name, context_field, prior_field, judge_field):
+def file_f1_select(file_name, context_field, prior_field):
     all_num = 0
     hit_num = 0
-    error_num = 0
-    context_num = 0
-    prior_num = 0
-    merge_error_num = 0
+    case1_num = 0
+    case2_num = 0
+    context_file = open('/data/xkliu/EL_datasets/COT_sample/merge/aida_train_GPT3_context.jsonl', 'w')
+    prior_file = open('/data/xkliu/EL_datasets/COT_sample/merge/aida_train_GPT3_prior.jsonl', 'w')
     with open(file_name) as input_f:
         for line in input_f:
             all_num += 1
             line = json.loads(line)
-
-            if len(line[judge_field]) == 0:
-                merge_error_num += 1
-                judge_res == 'context'
-            else:
-                judge_res = merge_decode(line[judge_field])
-                if judge_res == 'context':
-                    context_num += 1
-                elif judge_res == 'prior':
-                    prior_num += 1
             
             if (len(line[context_field]) == 0) and (len(line[prior_field]) == 0):
                 error_num += 1
@@ -191,98 +181,24 @@ def file_f1_merge(file_name, context_field, prior_field, judge_field):
                 prior_pred_entity = result_decode(line[prior_field], map_dict)
                 prior_pred_num = map_dict[prior_pred_entity]
             
-            if judge_res == 'context':
-                pred_num = context_pred_num
-            else:
-                pred_num = prior_pred_num
-            
-            if pred_num == line['ans_id']:
-                hit_num += 1
-            
-            # else:
-            #     bad_f.write(json.dumps(line,ensure_ascii=False) + '\n')
-            
-    print(all_num, hit_num, hit_num / all_num ,error_num)
-    print(all_num, merge_error_num, context_num, prior_num)
-
-def file_f1_merge(file_name, context_field, prior_field, judge_field, support_field):
-    all_num = 0
-    hit_num = 0
-    error_num = 0
-    context_num = 0
-    prior_num = 0
-    merge_error_num = 0
-    judge_num = 0
-    same_num = 0
-    with open(file_name) as input_f:
-        for line in input_f:
-            all_num += 1
-            line = json.loads(line)
-
-            if len(line[judge_field]) == 0:
-                merge_error_num += 1
-                judge_res == 'context'
-            else:
-                judge_res = merge_decode(line[judge_field])
-            
-            if (len(line[context_field]) == 0) and (len(line[prior_field]) == 0):
-                error_num += 1
-                continue
-
-            map_dict = {'none':4096}
-            for cand in line['candidates']:
-                map_dict[cand['name'].lower()] = int(cand['wiki_id'])
-
-            if len(line[context_field]) == 0:
-                context_pred_num = -1
-            else:
-                context_pred_entity = result_decode(line[context_field], map_dict)
-                context_pred_num = map_dict[context_pred_entity]
-
-            if len(line[prior_field]) == 0:
-                prior_pred_num = -1
-            else:
-                prior_pred_entity = result_decode(line[prior_field], map_dict)
-                prior_pred_num = map_dict[prior_pred_entity]
-            
-            if len(line[support_field]) == 0:
-                support_pred_num = -1
-            else:
-                support_pred_entity = result_decode(line[prior_field], map_dict)
-                support_pred_num = map_dict[support_pred_entity]
-
-            if context_pred_num == prior_pred_num:
-                same_num += 1
-                pred_num = context_pred_num
-            else:
-                if judge_res == 'prior':
-                    if context_pred_num == support_pred_entity:
-                        context_num += 1
-                        pred_num = context_pred_num
-                    else:
-                        prior_num += 1
-                        pred_num = prior_pred_num
-                else:
-                    context_num += 1
-                    pred_num = context_pred_num
-                
-
-            if pred_num == line['ans_id']:
-                hit_num += 1
+            if context_pred_num == line['ans_id'] and prior_pred_num != line['ans_id']:
+                case1_num += 1
+                context_file.write(json.dumps(line, ensure_ascii=False)+'\n')
+            elif context_pred_num != line['ans_id'] and prior_pred_num == line['ans_id']:
+                case2_num += 1
+                prior_file.write(json.dumps(line, ensure_ascii=False)+'\n')
             
             # else:
             #     bad_f.write(json.dumps(line,ensure_ascii=False) + '\n')
             
-    print(all_num, hit_num, hit_num / all_num ,error_num)
-    print(all_num, merge_error_num)
-    print(same_num, context_num, prior_num)
+    # print(all_num, hit_num, hit_num / all_num ,error_num)
+    print(case1_num,  case2_num)
 
 if __name__ == "__main__":
-    datasets_path = '/data/xkliu/EL_datasets/result/zephyr/merge/llm/'
-    dateset_name = 'msnbc_test_prompt0'
-    recall_file = '{}_sum13B_13B_prompt7_nocontext.jsonl'.format(dateset_name)
-    test_field = 'llm_predict_prompt0'
-    prior_field = 'llm_prior'
+    datasets_path = '/data/xkliu/EL_datasets/result/chatgpt/'
+    dateset_name = 'aida_train_GPT3_prompt0_listwise'
+    recall_file = '{}.jsonl'.format(dateset_name)
+    test_field = 'gpt_ans'
+    prior_field = 'chatgpt_prior'
     judge_field = 'llm_merge'
-    support_field = 'llm_predict_prompt1'
-    file_f1_merge(datasets_path + recall_file, test_field, prior_field, judge_field, support_field)
+    file_f1_select(datasets_path + recall_file, test_field, prior_field)

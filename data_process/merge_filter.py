@@ -205,28 +205,21 @@ def file_f1_merge(file_name, context_field, prior_field, judge_field):
     print(all_num, hit_num, hit_num / all_num ,error_num)
     print(all_num, merge_error_num, context_num, prior_num)
 
-def file_f1_merge(file_name, context_field, prior_field, judge_field, support_field):
-    all_num = 0
-    hit_num = 0
-    error_num = 0
-    context_num = 0
-    prior_num = 0
-    merge_error_num = 0
-    judge_num = 0
-    same_num = 0
-    with open(file_name) as input_f:
-        for line in input_f:
-            all_num += 1
-            line = json.loads(line)
+def cand_filter(cand_list:list, hit_set:set):
+    new_cand = []
+    for cand in cand_list:
+        if int(cand['wiki_id']) in hit_set:
+            new_cand.append(cand)
+    return new_cand
 
-            if len(line[judge_field]) == 0:
-                merge_error_num += 1
-                judge_res == 'context'
-            else:
-                judge_res = merge_decode(line[judge_field])
+def file_f1_merge(file_name, context_field, prior_field, judge_field, support_field, output_file_name):
+    output_f = open(output_file_name, 'w')
+    with open(file_name) as input_f:
+        for line in tqdm(input_f):
+            line = json.loads(line)
             
             if (len(line[context_field]) == 0) and (len(line[prior_field]) == 0):
-                error_num += 1
+                output_f.write(json.dumps(line, ensure_ascii=False) + '\n')
                 continue
 
             map_dict = {'none':4096}
@@ -245,44 +238,25 @@ def file_f1_merge(file_name, context_field, prior_field, judge_field, support_fi
                 prior_pred_entity = result_decode(line[prior_field], map_dict)
                 prior_pred_num = map_dict[prior_pred_entity]
             
-            if len(line[support_field]) == 0:
-                support_pred_num = -1
-            else:
-                support_pred_entity = result_decode(line[prior_field], map_dict)
-                support_pred_num = map_dict[support_pred_entity]
+            if (context_pred_num == -1) and (prior_pred_num == -1):
+                output_f.write(json.dumps(line, ensure_ascii=False) + '\n')
+                continue
 
-            if context_pred_num == prior_pred_num:
-                same_num += 1
-                pred_num = context_pred_num
-            else:
-                if judge_res == 'prior':
-                    if context_pred_num == support_pred_entity:
-                        context_num += 1
-                        pred_num = context_pred_num
-                    else:
-                        prior_num += 1
-                        pred_num = prior_pred_num
-                else:
-                    context_num += 1
-                    pred_num = context_pred_num
+            new_cand = cand_filter(line['candidates'], set([context_pred_num, prior_pred_num]))
+            line['candidates'] = new_cand
+            output_f.write(json.dumps(line, ensure_ascii=False) + '\n')
                 
 
-            if pred_num == line['ans_id']:
-                hit_num += 1
-            
-            # else:
-            #     bad_f.write(json.dumps(line,ensure_ascii=False) + '\n')
-            
-    print(all_num, hit_num, hit_num / all_num ,error_num)
-    print(all_num, merge_error_num)
-    print(same_num, context_num, prior_num)
 
 if __name__ == "__main__":
-    datasets_path = '/data/xkliu/EL_datasets/result/zephyr/merge/llm/'
-    dateset_name = 'msnbc_test_prompt0'
-    recall_file = '{}_sum13B_13B_prompt7_nocontext.jsonl'.format(dateset_name)
+    datasets_path = '/data/xkliu/EL_datasets/result/zephyr/merge/'
+    dataset_name = 'wiki_test_prompt0'
+    recall_file = '{}_sum13B_13B.jsonl'.format(dataset_name)
     test_field = 'llm_predict_prompt0'
     prior_field = 'llm_prior'
     judge_field = 'llm_merge'
     support_field = 'llm_predict_prompt1'
-    file_f1_merge(datasets_path + recall_file, test_field, prior_field, judge_field, support_field)
+    output_path = '/data/xkliu/EL_datasets/result/zephyr/merge/filter/'
+    
+    file_f1_merge(datasets_path + recall_file, test_field, prior_field, judge_field, support_field, 
+                  output_path + '{}.jsonl'.format(dataset_name))

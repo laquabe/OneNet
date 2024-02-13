@@ -37,18 +37,18 @@ def read_prompt(file_name):
     return prompt_dict
 
 def list_prompt_formula(src_dict:dict):
-    content = 'mention:{}\n'.format(src_dict['mention'])
+    content = 'Mention:{}\n'.format(src_dict['mention'])
 
     context = src_dict['left_context'] + ' ###' + src_dict['mention'] + '### ' + src_dict['right_context']
     context = context.strip()
     context = ' '.join(context.split())
-    content += 'context:{}\n'.format(context)
+    content += 'Context:{}\n'.format(context)
 
     candidates = random.sample(src_dict['candidates'], len(src_dict['candidates']))
     i = 1
     for cand in candidates:
         cand_entity = '{}.{}'.format(cand['name'], cand['summary'])
-        content += 'entity {}:{}\n'.format(i, cand_entity)
+        content += 'Entity {}:{}\n'.format(i, cand_entity)
         i += 1
     content += '\n'
     return content
@@ -74,18 +74,18 @@ def prompt_formula_judge(src_dict, judge_key):
     system_content = "You're an entity disambiguator."
 
     content = "I'll give you a mention, a context, and a list of candidates entities, the mention will be highlighted with '###' in context.\n\n"
-    content += 'mention:{}\n'.format(src_dict['mention'])
+    content += 'Mention:{}\n'.format(src_dict['mention'])
 
     context = src_dict['left_context'] + ' ###' + src_dict['mention'] + '### ' + src_dict['right_context']
     context = context.strip()
     context = ' '.join(context.split())
-    content += 'context:{}\n'.format(context)
+    content += 'Context:{}\n'.format(context)
 
     candidates = random.sample(src_dict['candidates'], len(src_dict['candidates']))
     i = 1
     for cand in candidates:
         cand_entity = '{}.{}'.format(cand['name'], cand['summary'])
-        content += 'entity {}:{}\n'.format(i, cand_entity)
+        content += 'Entity {}:{}\n'.format(i, cand_entity)
         i += 1
     content += '\n'
     content += """You need to determine which candidate entity is more likely to be the mention. Please refer to the above example, give your reasons, and finally answer serial number of the entity and the name of the entity. If all candidate entities are not appropriate, you can answer '-1.None'."""
@@ -208,9 +208,8 @@ def read_cot_cand(file_name):
 def prompt_formula(src_dict, cot_dict, cot_index_dict, cot_cand, topk, prompt_id):
     # system_content = "You're an entity disambiguator. I'll give you some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
     # system_content = "You're an entity disambiguator. I'll give you the description of entity disambiguation and some tips on entity disambiguation, you should pay attention to these textual features:\n\n"
-    # system_content = "You're an entity disambiguator."
-    system_content = ''
-    system_content += instruction_dict[prompt_id]['prompt']
+    system_content = "You're an entity disambiguator."
+    # system_content += instruction_dict[prompt_id]['prompt']
     # content += '\n\n'
 
     '''only category'''
@@ -220,19 +219,17 @@ def prompt_formula(src_dict, cot_dict, cot_index_dict, cot_cand, topk, prompt_id
     # else:
     #     cot_case = random.sample(cot_global_list, 1)[0]
     '''category and sentence sim'''
-    cot_index_list = cot_cand[:topk]
-    cot_index = random.sample(cot_index_list, 1)[0]
-    # print(cot_index)
-    cot_case = cot_index_dict[cot_index]
+    # cot_index_list = cot_cand[:topk]
+    # cot_index = random.sample(cot_index_list, 1)[0]
+    # # print(cot_index)
+    # cot_case = cot_index_dict[cot_index]
     '''random'''
     # cot_case = random.sample(list(cot_index_dict.values()), 1)[0]
     
     # content = 'The following example will help you understand the task:\n\n'
-    content = 'Example:\n\n'
-    content += cot_case
+    # content += cot_case
 
-    # content += "Now, I'll give you a mention, a context, and a list of candidates entities, the mention will be highlighted with '###' in context.\n\n"
-    content += 'Qusetion:\n\n'
+    content = "Now, I'll give you a mention, a context, and a list of candidates entities, the mention will be highlighted with '###' in context.\n\n"
     content += 'Mention:{}\n'.format(src_dict['mention'])
 
     context = src_dict['left_context'] + ' ###' + src_dict['mention'] + '### ' + src_dict['right_context']
@@ -263,24 +260,24 @@ def prompt_formula(src_dict, cot_dict, cot_index_dict, cot_cand, topk, prompt_id
 
     return messages
 
-dataset_name = 'aida_test_noprompt'
-prompt_id = 0
+dataset_name = 'wiki_test_prompt0'
+prompt_id = 1
 '''listwise or prior'''
-dataset = read_json(dataset_path + 'datasets_recall/listwise_input/{}_sum13B_13B_with_c.jsonl'.format(dataset_name))
+# dataset = read_json(dataset_path + 'datasets_recall/listwise_input/{}_sum13B_13B_with_c.jsonl'.format(dataset_name))
 # dataset = read_json('/data/xkliu/EL_datasets/datasets_recall/msnbc_test_13B.jsonl')
-output_f = open(dataset_path + 'result/zephyr/ablation/{}_simonly_prompt{}.jsonl'.format(dataset_name, prompt_id), 'w')
+# output_f = open(dataset_path + 'result/zephyr/baseline/msnbc_test_13B.jsonl'.format(dataset_name), 'w')
 '''judge'''
 # dataset = read_json(dataset_path + 'result/zephyr/{}_sum13B_13B_prompt{}_5top1.jsonl'.format(dataset_name, prompt_id))
 # output_f = open(dataset_path + 'result/zephyr/{}_sum13B_13B_prompt{}_10top1.jsonl'.format(dataset_name, prompt_id), 'w')
 '''merge'''
-# dataset = read_json(dataset_path + 'result/zephyr/merge/{}_sum13B_13B.jsonl'.format(dataset_name))
-# output_f = open(dataset_path + 'result/zephyr/merge/llm/{}_sum13B_13B_nocontext_cot.jsonl'.format(dataset_name), 'w')
+dataset = read_json(dataset_path + 'result/zephyr/merge/filter/{}.jsonl'.format(dataset_name))
+output_f = open(dataset_path + 'result/zephyr/merge/final/{}_sum13B_13B_nocot_noprompt.jsonl'.format(dataset_name), 'w')
 
-output_key = 'llama_predict'
+output_key = 'llm_merge'
 max_new_token = 1024
 instruction_dict = read_prompt('/data/xkliu/EL_code/LLM4EL/prompt/prompt.jsonl')
 cot_dict, cot_index_dict = read_cot('/data/xkliu/EL_datasets/COT_sample/final/aida_train_merge_listwise_repeated.jsonl')
-dataset_cand_list = read_cot_cand('/data/xkliu/EL_datasets/embedding/{}_cot_simonly.jsonl'.format(dataset_name))
+dataset_cand_list = read_cot_cand('/data/xkliu/EL_datasets/embedding/{}_cot.jsonl'.format(dataset_name))
 topk = 1
 
 i = 1
@@ -290,24 +287,29 @@ for src_dict, cot_cand in tqdm(zip(dataset, dataset_cand_list)):
     # messages = prompt_formula_prior(src_dict)                                        # prior
     # messages = prompt_formula_merge(src_dict, 'llm_predict_prompt0', 'llm_prior', False)
 
-    # print(json.dumps(messages))
-    # print('-----------------content-------------------')
-    # print(messages[1]['content'])
-    # if i >= 1:
-    #     exit()
-    # i += 1
-
-    try:
-        prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        outputs = pipe(prompt, max_new_tokens=max_new_token, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
-        gen_text = outputs[0]["generated_text"]
-        gen_start_pos = gen_text.find('<|assistant|>')  # zephyr
-        gen_text = gen_text[gen_start_pos:]             # zephyr
-        # print(gen_text)
-        src_dict[output_key] = gen_text
-        # exit()
+    if len(src_dict['candidates']) == 1:
+        src_dict[output_key] = 'The prior and context are the same. Predict entity is {}.'.format(src_dict['candidates'][0]['name'])
         output_f.write(json.dumps(src_dict, ensure_ascii=False) + '\n')
-    except:
-        src_dict[output_key] = ''
-        output_f.write(json.dumps(src_dict, ensure_ascii=False) + '\n')
+    else:
+        # print(json.dumps(messages))
+        # print('-------------system-content-------------------')
+        # print(messages[0]['content'])
+        # print('-----------------content-------------------')
+        # print(messages[1]['content'])
+        # if i >= 10:
+        #     exit()
+        # i += 1
+        try:
+            prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            outputs = pipe(prompt, max_new_tokens=max_new_token, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
+            gen_text = outputs[0]["generated_text"]
+            gen_start_pos = gen_text.find('<|assistant|>')  # zephyr
+            gen_text = gen_text[gen_start_pos:]             # zephyr
+            # print(gen_text)
+            src_dict[output_key] = gen_text
+            # exit()
+            output_f.write(json.dumps(src_dict, ensure_ascii=False) + '\n')
+        except:
+            src_dict[output_key] = ''
+            output_f.write(json.dumps(src_dict, ensure_ascii=False) + '\n')
     

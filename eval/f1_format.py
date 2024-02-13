@@ -65,7 +65,7 @@ def file_f1(file_name, test_field):
 
             map_dict = {'none':4096}
             for cand in line['candidates']:
-                map_dict[cand['name'].lower()] = int(cand['wiki_id'])
+                map_dict[str(cand['name']).lower()] = int(cand['wiki_id'])
 
             pred_entity = result_decode(line[test_field], map_dict)
             pred_num = map_dict[pred_entity]
@@ -78,8 +78,8 @@ def file_f1(file_name, test_field):
     print(all_num, hit_num, hit_num / all_num ,error_num)
 
 if __name__ == "__main__":
-    datasets_path = '/data/xkliu/EL_datasets/result/zephyr/'
-    dateset_name = 'wiki_test_prompt0'
-    recall_file = '{}_sum13B_13B_prompt4_5top1.jsonl'.format(dateset_name)
+    datasets_path = '/data/xkliu/EL_datasets/result/zephyr/ablation/'
+    dateset_name = 'aida_test_noprompt_simonly_prompt5'
+    recall_file = '{}.jsonl'.format(dateset_name)
     test_field = 'llama_predict'
     file_f1(datasets_path + recall_file, test_field)
