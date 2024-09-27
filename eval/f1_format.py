@@ -49,7 +49,6 @@ def result_decode(llm_pred:str, map_dict):
     
     return pred_entity
 
-# bad_f = open('/data/xkliu/EL_datasets/result/zephyr/badcase/ace2004_test_noprompt_sum13B_13B_noprompt.jsonl', 'w')
 def file_f1(file_name, test_field):
     all_num = 0
     hit_num = 0
@@ -72,14 +71,12 @@ def file_f1(file_name, test_field):
 
             if pred_num == line['ans_id']:
                 hit_num += 1
-            # else:
-            #     bad_f.write(json.dumps(line,ensure_ascii=False) + '\n')
             
     print(all_num, hit_num, hit_num / all_num ,error_num)
 
 if __name__ == "__main__":
-    datasets_path = '/data/xkliu/EL_datasets/result/zephyr/ablation/'
-    dateset_name = 'aida_test_noprompt_simonly_prompt5'
-    recall_file = '{}.jsonl'.format(dateset_name)
-    test_field = 'llama_predict'
-    file_f1(datasets_path + recall_file, test_field)
+    datasets_path = '/data/xkliu/EL_datasets/result/zephyr/merge/final/'
+    dateset_name = 'ace2004_test_noprompt_sum13B_13B_nocot_prompt1'
+    test_file = '{}.jsonl'.format(dateset_name)
+    test_field = 'llm_merge'
+    file_f1(datasets_path + test_file, test_field)
