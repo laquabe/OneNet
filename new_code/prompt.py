@@ -2,6 +2,7 @@ from LLM_calls import load_llm, llm_call
 import json
 from tqdm import tqdm
 import random
+import argparse
 
 def read_prompt(file_name):
     prompt_dict = {}
@@ -70,7 +71,7 @@ def category_prompt(src_dict):
     content += "please determine which of the above categories the mention {} belongs to?".format(src_dict['mention'])
     return content
 
-def point_wise_el_prompt(src_dict, cut=False):
+def point_wise_el_prompt(src_dict, instruction_dict, cut=False):
     content = "You're an entity disambiguator. I'll give you the description of entity disambiguation and some tips on entity disambiguation, and you need to pay attention to these textual features:\n\n"
     content += instruction_dict[0]['prompt']
     content += '\n\n'
@@ -185,81 +186,112 @@ def merge_prompt(src_dict, instruction_dict, prompt_id=1, have_id=True):
     return system_content, content
 
 if __name__ == '__main__':
-    model_name = 'Llama'
-    pipeline = load_llm(model_name, '/data/xkliu/LLMs/models/Meta-Llama-3-8B-Instruct')
-    # model_name = 'Zephyr'
-    # pipeline = load_llm(model_name, '/data/xkliu/LLMs/models/zephyr-7b-beta')
+    parser = argparse.ArgumentParser(description='DocFixQA args')
+    parser.add_argument('--dataset_name', '-d', type=str, required=True, help="Dataset Name")
+    parser.add_argument('--dataset_path', type=str, help="Dataset Path", default=None)
+    parser.add_argument('--model_name', '-m', type=str, required=True, help='Model Name')
+    parser.add_argument('--exp_name','-e',type=str, required=True, default='test', help='Exp Name')
+    parser.add_argument('--model_path','-p',type=str, required=True, help="Path to model")
+    parser.add_argument('--func_name','-f',type=str, required=True, help="Function(prompt) used")
+    parser.add_argument('--output_key', type=str, help='output json key', default='llm_response')
+    parser.add_argument('--instruction_dict', type=str, help='instruction file path', default='prompt/prompt.jsonl')
+    parser.add_argument('--COT_pool', type=str, help='COT file path', default='datasets/aida_train_COT_pool.jsonl')
+    parser.add_argument('--test', action='store_true', help="if Test", default=False)
 
-    func_name = 'context'
-    input_file_name = '/data/xkliu/EL_datasets/zeshel/mentions/split/listwise_raw_cot_3.json'
-    output_file_name = '/data/xkliu/EL_datasets/zeshel/LLM_process/raw/summary/listwise_raw_cot_3.json'
-    output_key = 'llm_response'
-    full_flag = True
+    args = parser.parse_args()
+    dataset_name = args.dataset_name.lower()
+    model_name = args.model_name
+    exp_name = args.exp_name
+    func_name = args.func_name
+    full_flag = False if args.test else True
+
+    pipeline = load_llm(model_name, args.model_path)
+
+    input_file_name = args.dataset_path
+    output_file_name = 'result/{}.json'.format(args.exp_name)
+    output_key = args.output_key
     
-    instruction_dict = read_prompt('/data/xkliu/EL_code/LLM4EL/prompt/prompt.jsonl')
-    cot_index_dict = read_cot('/data/xkliu/EL_datasets/COT_sample/final/aida_train_merge_listwise_repeated.jsonl')
+    if func_name == 'context':
+        instruction_dict = read_prompt(args.instruction_dict)
+        cot_index_dict = read_cot(args.COT_pool)
+    elif func_name in ['merge', 'point_wise']:
+        instruction_dict = read_prompt(args.instruction_dict)
 
-    if not full_flag:
-        with open(input_file_name) as input_f, \
-            open(output_file_name, 'w') as output_f:
-            for i, line in tqdm(enumerate(input_f)):
-                line = json.loads(line.strip())
-                if func_name == 'point_wise':
-                    prompt = point_wise_el_prompt(line, cut=True)
-                elif func_name == 'category':
-                    prompt = category_prompt(line)
-                elif func_name == 'context':
-                    system_prompt, prompt = context_prompt(line, cot_index_dict=cot_index_dict, instruction_dict=instruction_dict, ent_des='summary')
-                elif func_name == 'prior':
-                    system_prompt, prompt = prior_prompt(line)
-                elif func_name == 'merge':
-                    system_prompt, prompt = merge_prompt(line, instruction_dict=instruction_dict)
-                    if system_prompt == None:
-                        response = prompt
-                        line[output_key] = response
-                        output_f.write(json.dumps(line, ensure_ascii=False) + '\n')
-                        continue
+    if dataset_name == 'zeshel':
+        if not full_flag:
+            with open(input_file_name) as input_f, \
+                open(output_file_name, 'w') as output_f:
+                for i, line in tqdm(enumerate(input_f)):
+                    line = json.loads(line.strip())
+                    if func_name == 'summary':
+                        prompt = summary_prompt(line)
+                        system_prompt = ''
+                    elif func_name == 'point_wise':
+                        prompt = point_wise_el_prompt(line, instruction_dict, cut=False)
+                        system_prompt = ''
+                    elif func_name == 'category':
+                        prompt = category_prompt(line)
+                        system_prompt = ''
+                    elif func_name == 'context':
+                        system_prompt, prompt = context_prompt(line, cot_index_dict=cot_index_dict, instruction_dict=instruction_dict, ent_des='summary')
+                    elif func_name == 'prior':
+                        system_prompt, prompt = prior_prompt(line)
+                    elif func_name == 'merge':
+                        system_prompt, prompt = merge_prompt(line, instruction_dict=instruction_dict)
+                        if system_prompt == None:
+                            response = prompt
+                            line[output_key] = response
+                            output_f.write(json.dumps(line, ensure_ascii=False) + '\n')
+                            continue
 
-                print('-'*50 + 'Prompt' + '-'*50)
-                print(prompt)
-                messages = [
-                    {"role": "system", "content":system_prompt},
-                    {"role": "user", "content": prompt},
-                ]
-                response = llm_call(messages, model_name, pipeline=pipeline)
-                print('-'*50 + 'Response' + '-'*50)
-                print(response)
-                line[output_key] = response
-                output_f.write(json.dumps(line, ensure_ascii=False) + '\n')
-                if i >= 0:
-                    break
-    else:
-        with open(input_file_name) as input_f, \
-            open(output_file_name, 'w') as output_f:
-            for line in input_f:
-                line = json.loads(line.strip())
-                if func_name == 'point_wise':
-                    prompt = point_wise_el_prompt(line, cut=True)
-                elif func_name == 'category':
-                    prompt = category_prompt(line)
-                elif func_name == 'context':
-                    system_prompt, prompt = context_prompt(line, cot_index_dict=cot_index_dict, instruction_dict=instruction_dict)
-                elif func_name == 'prior':
-                    system_prompt, prompt = prior_prompt(line)
-                elif func_name == 'merge':
-                    system_prompt, prompt = merge_prompt(line, instruction_dict=instruction_dict)
-                    if system_prompt == None:
-                        response = prompt
-                        line[output_key] = response
-                        output_f.write(json.dumps(line, ensure_ascii=False) + '\n')
-                        continue
-                messages = [
-                    {"role": "system", "content":system_prompt},
-                    {"role": "user", "content": prompt},
-                ]
-                try:
+                    print('-'*50 + 'Prompt' + '-'*50)
+                    print(prompt)
+                    messages = [
+                        {"role": "system", "content":system_prompt},
+                        {"role": "user", "content": prompt},
+                    ]
                     response = llm_call(messages, model_name, pipeline=pipeline)
-                except:
-                    response = ''
-                line[output_key] = response
-                output_f.write(json.dumps(line, ensure_ascii=False) + '\n')
+                    print('-'*50 + 'Response' + '-'*50)
+                    print(response)
+                    line[output_key] = response
+                    output_f.write(json.dumps(line, ensure_ascii=False) + '\n')
+                    if i >= 0:
+                        break
+        else:
+            with open(input_file_name) as input_f, \
+                open(output_file_name, 'w') as output_f:
+                for line in input_f:
+                    line = json.loads(line.strip())
+                    if func_name == 'summary':
+                        prompt = summary_prompt(line)
+                        system_prompt = ''
+                    elif func_name == 'point_wise':
+                        prompt = point_wise_el_prompt(line, instruction_dict, cut=False)
+                        system_prompt = ''
+                    elif func_name == 'category':
+                        prompt = category_prompt(line)
+                        system_prompt = ''
+                    elif func_name == 'context':
+                        system_prompt, prompt = context_prompt(line, cot_index_dict=cot_index_dict, instruction_dict=instruction_dict)
+                    elif func_name == 'prior':
+                        system_prompt, prompt = prior_prompt(line)
+                    elif func_name == 'merge':
+                        system_prompt, prompt = merge_prompt(line, instruction_dict=instruction_dict)
+                        if system_prompt == None:
+                            response = prompt
+                            line[output_key] = response
+                            output_f.write(json.dumps(line, ensure_ascii=False) + '\n')
+                            continue
+                    messages = [
+                        {"role": "system", "content":system_prompt},
+                        {"role": "user", "content": prompt},
+                    ]
+                    try:
+                        response = llm_call(messages, model_name, pipeline=pipeline)
+                    except:
+                        response = ''
+                    line[output_key] = response
+                    output_f.write(json.dumps(line, ensure_ascii=False) + '\n')
+    else:
+        # WIKI 
+        pass

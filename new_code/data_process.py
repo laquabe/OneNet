@@ -170,6 +170,10 @@ def point_wise_filter(input_file_name, output_file_name, fail_file_name):
                 output_f.write(json.dumps(line, ensure_ascii=False) + '\n')
 
 def cut_context(left_context, right_context):
+    '''
+    for zeshel, some context too long
+    so if output is None, pls cut context first
+    '''
     left_pos = left_context.rfind('.')
     right_pos = right_context.find('.')
     first_pos = left_context.find('.')
@@ -188,7 +192,7 @@ def cut_context(left_context, right_context):
 
 def sentence_embed(file_path, sentence_file_name):
     from sentence_transformers import SentenceTransformer
-    model = SentenceTransformer('/data/xkliu/hf_models/all-mpnet-base-v2')
+    model = SentenceTransformer('hf_models/all-mpnet-base-v2')
     os.environ['CUDA_VISIBLE_DEVICES']='4'
     import torch
     torch.set_num_threads(10)
@@ -208,7 +212,7 @@ def sentence_embed(file_path, sentence_file_name):
 
     emb_list = np.array(emb_list)
     print(emb_list.shape)
-    np.save('/data/xkliu/EL_datasets/embedding/{}.npy'.format(sentence_file_name), emb_list)
+    np.save('EL_datasets/embedding/{}.npy'.format(sentence_file_name), emb_list)
 
 def normalization(data):
     _range = np.max(data) - np.min(data)
@@ -220,8 +224,8 @@ def cot_select(src_file_name, src_embed_name, output_file_name, alpha = 0.5):
 
     for cate in category_list:
         category_dict[cate.lower()] = []
-    cot_embed_arr = np.load('/data/xkliu/EL_datasets/embedding/aida_train_merge.npy')
-    cot_file = open('/data/xkliu/EL_datasets/COT_sample/final/aida_train_merge_listwise_repeated.jsonl')
+    cot_embed_arr = np.load('EL_datasets/embedding/aida_train_merge.npy')
+    cot_file = open('EL_datasets/COT_sample/final/aida_train_merge_listwise_repeated.jsonl')
 
     src_embed_list = np.load(src_embed_name)
     map_file = open(output_file_name, 'w')
@@ -496,9 +500,9 @@ def dataset_static(input_file_name, model):
     print(sum(context_len) / len(context_len))
 
 if __name__ == '__main__':
-    # input_file_path = '/data/xkliu/EL_datasets/zeshel/documents'
+    # input_file_path = 'EL_datasets/zeshel/documents'
     # file_list = os.listdir(input_file_path)
-    # output_file_name = '/data/xkliu/EL_datasets/zeshel/all.json'
+    # output_file_name = 'EL_datasets/zeshel/all.json'
     
     # concat_cands('mentions/test.json', 'tfidf_candidates/test.json', 'LLM_process/summary/summary.json', 'documents/all.json','mentions/listwise_raw.json')
 
@@ -506,7 +510,7 @@ if __name__ == '__main__':
 
     # split_file('mentions/', 'listwise_final_addsum', 3)
 
-    # input_data_path = '/data/xkliu/EL_datasets/zeshel/LLM_process/raw/text/'
+    # input_data_path = 'EL_datasets/zeshel/LLM_process/raw/text/'
     # input_file_list = []
     # for i in range(4):
     #     input_file_list.append(input_data_path + 'listwise_raw_cot_{}.json'.format(i))
@@ -517,33 +521,33 @@ if __name__ == '__main__':
 
     # print(phrase_pointwise_ans(llm_res))
 
-    # data_path = '/data/xkliu/EL_datasets/zeshel/'
+    # data_path = 'EL_datasets/zeshel/'
     # for i in range(4):
     #     point_wise_filter(data_path + 'LLM_process/pointwise_filter_fail/pointwise_filter_fail_{}.json'.format(i),
     #                       data_path + 'process_data/pointwise_filter_{}.json'.format(i),
     #                       data_path + 'process_data/pointwise_filter_{}_fail.json'.format(i))
 
-    # process_file_line('/data/xkliu/EL_datasets/zeshel/LLM_process/raw/text/listwise_raw_cot.json',
-    #                   '/data/xkliu/EL_datasets/zeshel/process_data/result_llama3_raw_text.json',
-    #                   'context')
+    process_file_line('datasets/zeshel/process_data/pointwise_raw.json',
+                      'datasets/zeshel/process_data/pointwise_cut.json',
+                      'cut_context')
 
-    # point2list('/data/xkliu/EL_datasets/zeshel/mentions/pointwise_filter.json', '/data/xkliu/EL_datasets/zeshel/mentions/listwise_filter.json')
+    # point2list('EL_datasets/zeshel/mentions/pointwise_filter.json', 'EL_datasets/zeshel/mentions/listwise_filter.json')
     # add_nocands('mentions/listwise_raw.json', 'mentions/listwise_filter.json', 'mentions/listwise_filter_full.json')
-    # sentence_embed('/data/xkliu/EL_datasets/zeshel/process_data/category.json', 'zeshel')
-    # cot_select('/data/xkliu/EL_datasets/zeshel/process_data/category.json',
-    #            '/data/xkliu/EL_datasets/embedding/zeshel.npy',
-    #            '/data/xkliu/EL_datasets/zeshel/process_data/listwise_final.json')
+    # sentence_embed('EL_datasets/zeshel/process_data/category.json', 'zeshel')
+    # cot_select('EL_datasets/zeshel/process_data/category.json',
+    #            'EL_datasets/embedding/zeshel.npy',
+    #            'EL_datasets/zeshel/process_data/listwise_final.json')
 
-    # merge_context_and_prior('/data/xkliu/EL_datasets/zeshel/process_data/context_id_first.json',
-    #                         '/data/xkliu/EL_datasets/zeshel/process_data/prior_id_first.json',
-    #                         '/data/xkliu/EL_datasets/zeshel/mentions/listwise_merge.json')
+    # merge_context_and_prior('EL_datasets/zeshel/process_data/context_id_first.json',
+    #                         'EL_datasets/zeshel/process_data/prior_id_first.json',
+    #                         'EL_datasets/zeshel/mentions/listwise_merge.json')
 
-    # long_context_filter('/data/xkliu/EL_datasets/zeshel/LLM_process/prior_id.json',
-    #                     '/data/xkliu/EL_datasets/zeshel/tmp/prior_long.json')
+    # long_context_filter('EL_datasets/zeshel/LLM_process/prior_id.json',
+    #                     'EL_datasets/zeshel/tmp/prior_long.json')
 
-    # concat_cot('/data/xkliu/EL_datasets/zeshel/mentions/listwise_merge.json',
-    #            '/data/xkliu/EL_datasets/zeshel/mentions/listwise_raw.json',
-    #            '/data/xkliu/EL_datasets/zeshel/mentions/listwise_raw_cot.json')
+    # concat_cot('EL_datasets/zeshel/mentions/listwise_merge.json',
+    #            'EL_datasets/zeshel/mentions/listwise_raw.json',
+    #            'EL_datasets/zeshel/mentions/listwise_raw_cot.json')
 
-    dataset_static('/data/xkliu/EL_datasets/datasets_recall/wiki_test_13B_top10g.jsonl',
-                   '/data/xkliu/LLMs/models/Meta-Llama-3-8B-Instruct')
+    # dataset_static('EL_datasets/datasets_recall/wiki_test_13B_top10g.jsonl',
+    #                'LLMs/models/Meta-Llama-3-8B-Instruct')
