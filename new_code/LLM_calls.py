@@ -123,31 +123,3 @@ if __name__ == "__main__":
         {"role": "user", "content": "Do you have mayonnaise recipes?"}
     ]
     model_name = 'Llama'
-    '''Mistarl'''
-    # model, tokenizer = load_llm(model_name, '')
-    # response = llm_call(messages, model_name, model=model, tokenizer=tokenizer)
-    # print(response)
-    '''Llama'''
-    # pipeline = load_llm(model_name, '/data/share_weight/Meta-Llama-3-8B-Instruct')
-    # response = llm_call(messages, model_name, pipeline=pipeline)
-    # print(response)
-    '''GLM3'''
-    # model, tokenizer = load_llm(model_name, '/data/xkliu/LLMs/models/chatglm3-6b')
-    # response = llm_call(messages, model_name, model=model, tokenizer=tokenizer)
-    # print(response)
-    '''Baichuan'''
-    # model, tokenizer = load_llm(model_name, '/data/xkliu/LLMs/models/Baichuan2-7B-Chat')
-    # response = llm_call(messages, model_name, model=model, tokenizer=tokenizer)
-    # print(response)
-    '''Qwen'''
-    # model, tokenizer = load_llm(model_name, '/data/xkliu/LLMs/models/Qwen2-7B-Instruct')
-    # response = llm_call(messages, model_name, model=model, tokenizer=tokenizer, do_sample=True)
-    # print(response)
-    '''Yi'''
-    # model, tokenizer = load_llm(model_name, '/data/xkliu/LLMs/models/Yi-1.5-9B-Chat')
-    # response = llm_call(messages, model_name, model=model, tokenizer=tokenizer, do_sample=True)
-    # print(response)
-    '''GLM4'''
-    # model, tokenizer = load_llm(model_name, '/data/xkliu/LLMs/models/glm-4-9b-chat')
-    # response = llm_call(messages, model_name, model=model, tokenizer=tokenizer, do_sample=True)
-    # print(response)

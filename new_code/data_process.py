@@ -456,20 +456,29 @@ def long_context_filter(input_file_name, output_file_name):
                 line['cut_right_context'] = cut_right
                 output_f.write(json.dumps(line, ensure_ascii=False) + '\n')
 
-def concat_cot(src_file_name, input_file_name, output_file_name):
+def concat_cot(src_file_name, input_file_name, output_file_name, zeshel=False):
     with open(src_file_name) as src_file, \
         open(input_file_name) as input_file, \
         open(output_file_name, 'w') as output_file:
         '''cot_index'''
-        mention2cot = {}
-        for line in tqdm(src_file):
-            line = json.loads(line.strip())
-            mention2cot[line['mention_id']] = line['cot_index']
+        if zeshel:
+            '''for zeshel as zeshel have mention id'''
+            mention2cot = {}
+            for line in tqdm(src_file):
+                line = json.loads(line.strip())
+                mention2cot[line['mention_id']] = line['cot_index']
 
-        for line in tqdm(input_file):
-            line = json.loads(line.strip())
-            line['cot_index'] = mention2cot[line['mention_id']]
-            output_file.write(json.dumps(line, ensure_ascii=False) + '\n')
+            for line in tqdm(input_file):
+                line = json.loads(line.strip())
+                line['cot_index'] = mention2cot[line['mention_id']]
+                output_file.write(json.dumps(line, ensure_ascii=False) + '\n')
+        else:
+            '''for other datasets'''
+            for line, cot in tqdm(zip(input_file, src_file)):
+                line = json.loads(line.strip())
+                cot = json.loads(cot.strip())
+                line['cot_index'] = cot['cand_index'][0]
+                output_file.write(json.dumps(line, ensure_ascii=False) + '\n')
 
 def add_summary(des:str):
     return des.split('.')[0] + '.'
@@ -527,9 +536,9 @@ if __name__ == '__main__':
     #                       data_path + 'process_data/pointwise_filter_{}.json'.format(i),
     #                       data_path + 'process_data/pointwise_filter_{}_fail.json'.format(i))
 
-    process_file_line('datasets/zeshel/process_data/pointwise_raw.json',
-                      'datasets/zeshel/process_data/pointwise_cut.json',
-                      'cut_context')
+    # process_file_line('datasets/zeshel/process_data/pointwise_raw.json',
+    #                   'datasets/zeshel/process_data/pointwise_cut.json',
+    #                   'cut_context')
 
     # point2list('EL_datasets/zeshel/mentions/pointwise_filter.json', 'EL_datasets/zeshel/mentions/listwise_filter.json')
     # add_nocands('mentions/listwise_raw.json', 'mentions/listwise_filter.json', 'mentions/listwise_filter_full.json')
@@ -545,9 +554,9 @@ if __name__ == '__main__':
     # long_context_filter('EL_datasets/zeshel/LLM_process/prior_id.json',
     #                     'EL_datasets/zeshel/tmp/prior_long.json')
 
-    # concat_cot('EL_datasets/zeshel/mentions/listwise_merge.json',
-    #            'EL_datasets/zeshel/mentions/listwise_raw.json',
-    #            'EL_datasets/zeshel/mentions/listwise_raw_cot.json')
+    concat_cot('EL_datasets/embedding/wiki_test_prompt0_cot.jsonl',
+               'EL_datasets/datasets_recall/listwise_input/wiki.jsonl',
+               'datasets/wiki/listwise_filter.jsonl')
 
     # dataset_static('EL_datasets/datasets_recall/wiki_test_13B_top10g.jsonl',
     #                'LLMs/models/Meta-Llama-3-8B-Instruct')
