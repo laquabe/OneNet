@@ -1,5 +1,5 @@
 # OneNet
-Repository for [OneNet: A Fine-Tuning Free Framework for Few-Shot Entity Linking via Large Language Model Prompting.](https://openreview.net/forum?id=GCxvf6qxeW) @ EMNLP 2024, main.
+Repository for [OneNet: A Fine-Tuning Free Framework for Few-Shot Entity Linking via Large Language Model Prompting.](https://openreview.net/forum?id=GCxvf6qxeW) @ EMNLP 2024, main. [[arxiv](https://arxiv.org/abs/2410.07549)]
 
 ## Set Up
 
